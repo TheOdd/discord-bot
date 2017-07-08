@@ -1,0 +1,24 @@
+{
+  "name": "discord-bot",
+  "version": "1.0.0",
+  "description": "Small personal Discord bot",
+  "main": "bot.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/TheOdd/discord-bot.git"
+  },
+  "author": "TheOdd",
+  "license": "MIT",
+  "bugs": {
+    "url": "https://github.com/TheOdd/discord-bot/issues"
+  },
+  "homepage": "https://github.com/TheOdd/discord-bot#readme",
+  "dependencies": {
+    "discord.js": "^11.1.0",
+    "dotenv": "^4.0.0",
+    "node-opus": "^0.2.6"
+  }
+}
