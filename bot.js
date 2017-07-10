@@ -7,6 +7,10 @@ const eightBallResponses = ['Odds aren\'t good.', 'No.', 'It will pass.', 'Canno
   'Ask again.', 'No doubt.', 'Absolutely', 'Very likely.', 'Act now.',
   'Stars say no.', 'Can\'t say.', 'Not now.', 'Go for it.', 'Yes.', 'It\'s O.K.'
 ];
+const helpCommands = ['**Help:** Display this menu.', '**Nudes:** Get some spicy nudes.',
+  '**Flip** / **Coin:** Flip a coin!', '**8Ball:** Ask the magic 8-Ball a question!',
+  '**Price [item name]:** Gets a specific item\'s price in Refined Metal from backpack.tf. \n*This can only be used once per 5 minutes! Also, be sure to spell the item exactly as it appears in-game (case-sensitive!).*'
+]
 
 function randomIntFromInterval(min, max) {
   return Math.floor(Math.random() * (max - min + 1) + min);
@@ -30,10 +34,9 @@ client.on('ready', () => {
 });
 
 client.on('message', message => {
-
   // +HELP
   if (compareMessage(message, 'help')) {
-    message.channel.send('**Commands:**\n\n **Help:** Display this menu.\n **Nudes:** Get some spicy nudes.\n **Flip** / **Coin:** Flip a coin!\n **8Ball:** Ask the magic 8-Ball a question!\n\n *All commands must have a + before them to be registered!*');
+    message.channel.send('**Commands:**\n\n' + helpCommands.join('\n') + '\n\n*All commands must have a + before them to be registered!*');
   }
 
   // +NUDES
@@ -60,6 +63,22 @@ client.on('message', message => {
   else if (compareMessage(message, '8ball')) {
     var responseNum = randomIntFromInterval(0, eightBallResponses.length);
     message.channel.send(eightBallResponses[responseNum]);
+  }
+
+  // +Price
+  else if (compareMessage(message, 'price')) {
+    var itemName = message.content.split(/\s+/g).slice(1).join(' ');
+    var request = require('request');
+    request.get('https://backpack.tf/api/IGetPrices/v4?key=' + process.env.BACKPACK_TF_API_KEY, function(err, resp, body) {
+      if (JSON.parse(body).response.success === 0) {
+        message.channel.send('Due to backpack.tf only allowing one request per 5 minutes, please wait another ' + JSON.parse(body).response.message.split(' ')[13] + ' seconds before trying again.');
+      } else if (JSON.parse(body).response.items[itemName] !== undefined) {
+        message.channel.send(JSON.parse(body).response.items[itemName].prices['6']
+          .Tradable.Craftable[0].value + ' Refined');
+      } else {
+        message.channel.send('Invalid item name! Be sure to type the name of the item exactly as it appears in-game! (Case sensitive!)');
+      }
+    });
   }
 });
 
