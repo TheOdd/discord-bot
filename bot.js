@@ -33,6 +33,7 @@ mongoose.connection.on('error', function() {
 
 mongoose.connect(process.env.MONGODB_URI);
 
+
 var itemSchema = new mongoose.Schema({
   name: String,
   properties: Object
@@ -55,31 +56,33 @@ client.on('ready', () => {
   function grabNames() {
     request.get('https://backpack.tf/api/IGetPrices/v4?key=' + process.env.BACKPACK_TF_API_KEY, function(err, resp, body) {
       if (JSON.parse(body).response.success === 0) {
-        var secondsLeft = parseInt(JSON.parse(body).response.message.split(' ')[13]);
+        var secondsLeft = parseInt(JSON.parse(body).response.message.split(' ')[13]) + 1;
         console.log('Due to backpack.tf only allowing one request per 5 minutes, please wait another', secondsLeft, 'seconds before trying again.');
         setTimeout(grabNames, secondsLeft * 1000);
       } else {
-        var count = 0;
-        var total = Object.keys(JSON.parse(body).response.items).length;
-        var progress;
-        for (var key in JSON.parse(body).response.items) {
-          if (JSON.parse(body).response.items.hasOwnProperty(key)) {
-            count++;
-            progress = count / total * 100;
-            var newItem = new Item({
-              name: key,
-              properties: JSON.parse(body).response.items[key]
-            });
-            itemArr.push(newItem);
-            console.log(progress + '%');
-          }
-        }
-        console.log('Done pushing items to local array.');
-        Item.collection.insert(itemArr, function(err, docs) {
+        Item.remove({}, function(err) {
           if (err) {
             console.log(err);
           } else {
-            console.log('Saved', docs.length, 'documents to database.');
+            console.log('Successfully removed old collection.');
+            var parsedItems = JSON.parse(body).response.items;
+            for (var key in parsedItems) {
+              if (parsedItems.hasOwnProperty(key)) {
+                var newItem = new Item({
+                  name: key,
+                  properties: parsedItems[key]
+                });
+                itemArr.push(newItem);
+              }
+            }
+            console.log('Done pushing items to local array.');
+            Item.collection.insert(itemArr, function(err, docs) {
+              if (err) {
+                console.log(err);
+              } else {
+                console.log('Saved', itemArr.length, 'documents to database.');
+              }
+            });
           }
         });
       }
@@ -115,20 +118,20 @@ client.on('message', message => {
   // +Price
   else if (compareMessage(message, 'price')) {
     var itemName = message.content.split(/\s+/g).slice(1).join(' ');
-    if (itemName !== '' && itemArr.includes(itemName)) {
-      var request = require('request');
-      request.get('https://backpack.tf/api/IGetPrices/v4?key=' + process.env.BACKPACK_TF_API_KEY, function(err, resp, body) {
-        if (JSON.parse(body).response.success === 0) {
-          message.channel.send('Due to backpack.tf only allowing one request per 5 minutes, please wait another ' + JSON.parse(body).response.message.split(' ')[13] + ' seconds before trying again.');
-        } else if (JSON.parse(body).response.items[itemName] !== undefined) {
-          message.channel.send(JSON.parse(body).response.items[itemName].prices['6']
-            .Tradable.Craftable[0].value + ' Refined');
-        }
-      });
-    } else if (itemName === '') {
+    if (itemName === '') {
       message.channel.send('Please specify an item name!');
     } else {
-      message.channel.send('Invalid item name! Be sure to type the name of the item exactly as it appears in-game! (Case sensitive!)');
+      Item.find({
+        name: itemName
+      }, function(err, arr) {
+        if (err) {
+          console.log(err);
+        } else if (arr.length === 0) {
+          message.channel.send('Invalid item name! Be sure to type the name of the item exactly as it appears in-game! (Case sensitive!)');
+        } else {
+          message.channel.send(arr[0].properties.prices[Object.keys(arr[0].properties.prices)[0]].Tradable.Craftable[0].value + ' Refined');
+        }
+      });
     }
   }
 });
